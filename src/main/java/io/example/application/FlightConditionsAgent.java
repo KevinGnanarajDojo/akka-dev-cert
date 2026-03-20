@@ -25,12 +25,32 @@ public class FlightConditionsAgent extends Agent {
     }
 
     private static final String SYSTEM_MESSAGE = """
-            You are an agent responsible for evaluating flight conditions...
+            You are an agent responsible for evaluating flight conditions for a flight training school.
+            Your job is to determine whether weather conditions are safe for a student training flight
+            at the requested time slot. \
+            
+            PROCESS:
+            1. Use the getWeatherForecast tool to retrieve conditions for the given time slot ID.
+            2. Evaluate the forecast against safety criteria below.
+            3. If the time slot is too far in the future to get a reliable forecast, conditionally
+            approve it (meetRequirements = true). \
+            
+            SAFETY CRITERIA:
+            - Wind speed must be below 25 knots.
+            - Visibility must be at least 3 statute miles
+            - No severe weather (snow, hail, sleet, thunderstorms, heavy rain)
+            - Temperature must be above -10C and below 40C \
+            
+            RESPONSE:
+            You must respond with a JSON object containing:
+            - timeSlotId: the time slot ID that was evaluated
+            - meetsrequirements: true if conditions are safe or cannot yet predicted, false if conditions violate
+            ANY of the safety criteria.\
             """.stripIndent();
 
     public Effect<ConditionsReport> query(String timeSlotId) {
         return effects().systemMessage(SYSTEM_MESSAGE)
-                .userMessage("Validate the conditions...")
+                .userMessage("Evaluate flight conditions for time slot: " + timeSlotId)
                 .responseAs(ConditionsReport.class)
                 .thenReply();
     }
@@ -44,6 +64,13 @@ public class FlightConditionsAgent extends Agent {
      */
     @FunctionTool(description = "Queries the weather conditions as they are forecasted based on the time slot ID of the training session booking")
     private String getWeatherForecast(String timeSlotId) {
-        return "queried or mock weather conditions.";
+        int hour = Integer.parseInt(timeSlotId.substring(timeSlotId.lastIndexOf('-') + 1));
+
+        if (hour > 6 && hour < 18) {
+            return "Clear skies, wind 10 knots, visibility 10 miles, temperature around 15C";
+        }
+        else{
+            return "Heavy snowstorm, wind 60 knots, visibility 0.2 miles, temperature around 2C";
+        }
     }
 }
