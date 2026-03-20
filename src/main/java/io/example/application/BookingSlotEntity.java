@@ -122,7 +122,7 @@ public class BookingSlotEntity extends EventSourcedEntity<Timeslot, BookingEvent
     private static boolean isFutureSlot(String slotID){
         try{
             var parts = slotID.split("-");
-            var slotTime = LocalDateTime.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2])
+            var slotTime = LocalDateTime.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2]),
                     Integer.parseInt(parts[3]), 0);
             return slotTime.isAfter(LocalDateTime.now());
         } catch (Exception e) {
