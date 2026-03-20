@@ -23,7 +23,37 @@ public class SlotToParticipantConsumer extends Consumer {
     }
 
     public Effect onEvent(BookingEvent event) {
-        // Supply your own implementation
+
+        logger.info("[SPC] Revieved BookingEvent: {}", event);
+        String key = participantSlotId(event);
+
+        switch (event){
+            case BookingEvent.ParticipantMarkedAvailable e -> {
+                logger.info("[SPC] Marking participant {} as available for slot {}", e.participantId(), e.slotId());
+                client.forEventSourcedEntity(key)
+                        .method(ParticipantSlotEntity::markAvailable)
+                        .invoke(new ParticipantSlotEntity.Commands.MarkAvailable(e.slotId(), e.participantId(), e.participantType()));
+            }
+            case BookingEvent.ParticipantUnmarkedAvailable e -> {
+                logger.info("[SPC] Unmarking participant {} as available for slot {}", e.participantId(), e.slotId());
+                client.forEventSourcedEntity(key)
+                        .method(ParticipantSlotEntity::unmarkAvailable)
+                        .invoke(new ParticipantSlotEntity.Commands.UnmarkAvailable(e.slotId(), e.participantId(), e.participantType()));
+            }
+            case BookingEvent.ParticipantBooked e -> {
+                logger.info("[SPC] Booking participant {} for slot {}", e.participantId(), e.slotId());
+                client.forEventSourcedEntity(key)
+                        .method(ParticipantSlotEntity::book)
+                        .invoke(new ParticipantSlotEntity.Commands.Book(e.slotId(), e.participantId(), e.participantType(), e.bookingId()));
+            }
+            case BookingEvent.ParticipantCanceled e -> {
+                logger.info("[SPC] Cancelling booking of participant {} for slot {}", e.participantId(), e.slotId());
+                client.forEventSourcedEntity(key)
+                        .method(ParticipantSlotEntity::cancel)
+                        .invoke(new ParticipantSlotEntity.Commands.Cancel(e.slotId(), e.participantId(), e.participantType(), e.bookingId()));
+            }
+        }
+
         return effects().done();
     }
 
