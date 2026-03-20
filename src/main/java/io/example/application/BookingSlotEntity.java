@@ -7,6 +7,8 @@ import akka.javasdk.eventsourcedentity.EventSourcedEntityContext;
 import io.example.domain.BookingEvent;
 import io.example.domain.Participant;
 import io.example.domain.Timeslot;
+
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 
@@ -47,7 +49,9 @@ public class BookingSlotEntity extends EventSourcedEntity<Timeslot, BookingEvent
     // `ParticipantBooked` events
     public Effect<Done> bookSlot(Command.BookReservation cmd) {
 
-        //TODO: Validate the slot is in the future
+        if (!isFutureSlot(entityId)){
+            return effects().error("[BSE] Cannot book a slot in the past");
+        }
 
         if (!currentState().isBookable(cmd.studentId(), cmd.aircraftId(), cmd.instructorId())){
             return effects().error("[BSE] Not all participants are available for booking");
@@ -112,6 +116,17 @@ public class BookingSlotEntity extends EventSourcedEntity<Timeslot, BookingEvent
         record BookReservation(
                 String studentId, String aircraftId, String instructorId, String bookingId)
                 implements Command {
+        }
+    }
+
+    private static boolean isFutureSlot(String slotID){
+        try{
+            var parts = slotID.split("-");
+            var slotTime = LocalDateTime.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2])
+                    Integer.parseInt(parts[3]), 0);
+            return slotTime.isAfter(LocalDateTime.now());
+        } catch (Exception e) {
+            return false; // in the case of a malformed slot ID
         }
     }
 }
