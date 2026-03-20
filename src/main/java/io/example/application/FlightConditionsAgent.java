@@ -21,7 +21,7 @@ import akka.javasdk.annotations.FunctionTool;
 @Component(id = "flight-conditions-agent")
 public class FlightConditionsAgent extends Agent {
 
-    record ConditionsReport(String timeSlotId, Boolean meetsRequirements) {
+    public record ConditionsReport(String timeSlotId, Boolean meetsRequirements) {
     }
 
     private static final String SYSTEM_MESSAGE = """
