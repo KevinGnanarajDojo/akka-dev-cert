@@ -45,7 +45,7 @@ public class FlightConditionsAgent extends Agent {
             RESPONSE:
             You must respond with a JSON object containing:
             - timeSlotId: the time slot ID that was evaluated
-            - meetsrequirements: true if conditions are safe or cannot yet predicted, false if conditions violate
+            - meetsRequirements: true if conditions are safe or cannot yet predicted, false if conditions violate
             ANY of the safety criteria.\
             """.stripIndent();
 
