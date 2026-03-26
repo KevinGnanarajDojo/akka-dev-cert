@@ -52,4 +52,22 @@ public class FlightConditionsAgentTest extends TestKitSupport {
     assertNotNull(report);
     assertFalse(report.meetsRequirements());
   }
+
+  @Test
+  public void conditionalApprovalFarFuture() {
+    // Far-future slot — agent should conditionally approve
+    var expected = new ConditionsReport("2099-12-31-10", true);
+    agentModel.fixedResponse(JsonSupport.encodeToString(expected));
+
+    var report =
+        componentClient
+            .forAgent()
+            .inSession("test-session-3")
+            .method(FlightConditionsAgent::query)
+            .invoke("2099-12-31-10");
+
+    assertNotNull(report);
+    assertTrue(report.meetsRequirements());
+    assertEquals("2099-12-31-10", report.timeSlotId());
+  }
 }

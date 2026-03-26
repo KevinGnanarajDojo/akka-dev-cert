@@ -26,10 +26,10 @@ public class ParticipantSlotsView extends View {
         public Effect<SlotRow> onEvent(ParticipantSlotEntity.Event event) {
            return switch (event){
                case MarkedAvailable e -> effects()
-                       .updateRow(new SlotRow(e.slotId(), e.participantId(), e.participantType().name(), "", "AVAILABLE"));
+                       .updateRow(new SlotRow(e.slotId(), e.participantId(), e.participantType().name(), "", "available"));
                case UnmarkedAvailable e -> effects().deleteRow();
                case Booked e -> effects()
-                       .updateRow(new SlotRow(e.slotId(), e.participantId(), e.participantType().name(), e.bookingId(), "BOOKED"));
+                       .updateRow(new SlotRow(e.slotId(), e.participantId(), e.participantType().name(), e.bookingId(), "booked"));
                case Canceled e -> effects().deleteRow();
            };
         }

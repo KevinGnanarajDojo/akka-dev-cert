@@ -216,4 +216,94 @@ public class BookingSlotEntityTest {
     assertTrue(timeslot.isWaiting("alice", ParticipantType.STUDENT));
     assertTrue(timeslot.bookings().isEmpty());
   }
+
+  @Test
+  public void multipleParticipantsSameType() {
+    var testKit = EventSourcedTestKit.of(FUTURE_SLOT, BookingSlotEntity::new);
+
+    var alice2 = new Participant("alice2", ParticipantType.STUDENT);
+
+    // Mark 2 students + 1 aircraft + 1 instructor
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(alice));
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(alice2));
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(superplane));
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(superteacher));
+
+    var state = testKit.getState();
+    assertEquals(4, state.available().size());
+    assertTrue(state.isWaiting("alice", ParticipantType.STUDENT));
+    assertTrue(state.isWaiting("alice2", ParticipantType.STUDENT));
+  }
+
+  @Test
+  public void doubleBookingSameParticipants() {
+    var testKit = EventSourcedTestKit.of(FUTURE_SLOT, BookingSlotEntity::new);
+
+    // Mark and book
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(alice));
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(superplane));
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(superteacher));
+    testKit
+        .method(BookingSlotEntity::bookSlot)
+        .invoke(
+            new Command.BookReservation(
+                "alice", "superplane", "superteacher", "booking1"));
+
+    // Try to book same trio again — they are no longer available
+    var result =
+        testKit
+            .method(BookingSlotEntity::bookSlot)
+            .invoke(
+                new Command.BookReservation(
+                    "alice", "superplane", "superteacher", "booking2"));
+
+    assertTrue(result.isError());
+  }
+
+  @Test
+  public void bookDoesNotAffectOtherAvailableParticipants() {
+    var testKit = EventSourcedTestKit.of(FUTURE_SLOT, BookingSlotEntity::new);
+
+    var alice2 = new Participant("alice2", ParticipantType.STUDENT);
+
+    // Mark 2 students, 1 aircraft, 1 instructor
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(alice));
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(alice2));
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(superplane));
+    testKit
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(new Command.MarkSlotAvailable(superteacher));
+
+    // Book alice — alice2 should remain available
+    testKit
+        .method(BookingSlotEntity::bookSlot)
+        .invoke(
+            new Command.BookReservation(
+                "alice", "superplane", "superteacher", "booking1"));
+
+    var state = testKit.getState();
+    assertEquals(3, state.bookings().size());
+    assertEquals(1, state.available().size());
+    assertTrue(state.isWaiting("alice2", ParticipantType.STUDENT));
+  }
 }

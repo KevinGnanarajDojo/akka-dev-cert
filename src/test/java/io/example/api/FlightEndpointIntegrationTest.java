@@ -133,7 +133,7 @@ public class FlightEndpointIntegrationTest extends TestKitSupport {
                   componentClient
                       .forView()
                       .method(ParticipantSlotsView::getSlotsByParticipantAndStatus)
-                      .invoke(new ParticipantStatusInput("bob", "AVAILABLE"));
+                      .invoke(new ParticipantStatusInput("bob", "available"));
               assertFalse(slots.slots().isEmpty());
               assertEquals(slotId, slots.slots().getFirst().slotId());
             });
@@ -275,7 +275,7 @@ public class FlightEndpointIntegrationTest extends TestKitSupport {
                   componentClient
                       .forView()
                       .method(ParticipantSlotsView::getSlotsByParticipantAndStatus)
-                      .invoke(new ParticipantStatusInput("frank", "AVAILABLE"));
+                      .invoke(new ParticipantStatusInput("frank", "available"));
               assertEquals(2, slots.slots().size());
             });
   }
@@ -291,5 +291,177 @@ public class FlightEndpointIntegrationTest extends TestKitSupport {
                 .forEventSourcedEntity(slotId)
                 .method(BookingSlotEntity::cancelBooking)
                 .invoke("nonexistent-booking"));
+  }
+
+  @Test
+  public void httpBookingBlockedByAgent() {
+    String slotId = "2099-03-20-10";
+
+    // Mark all 3 available
+    componentClient
+        .forEventSourcedEntity(slotId)
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(
+            new Command.MarkSlotAvailable(new Participant("gina", ParticipantType.STUDENT)));
+    componentClient
+        .forEventSourcedEntity(slotId)
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(
+            new Command.MarkSlotAvailable(new Participant("plane4", ParticipantType.AIRCRAFT)));
+    componentClient
+        .forEventSourcedEntity(slotId)
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(
+            new Command.MarkSlotAvailable(
+                new Participant("teach4", ParticipantType.INSTRUCTOR)));
+
+    // Mock agent rejection
+    agentModel.fixedResponse(
+        JsonSupport.encodeToString(new ConditionsReport(slotId, false)));
+
+    // Verify agent rejects
+    var report =
+        componentClient
+            .forAgent()
+            .inSession("block-test")
+            .method(FlightConditionsAgent::query)
+            .invoke(slotId);
+    assertFalse(report.meetsRequirements());
+
+    // Verify participants are still available (booking was NOT created)
+    var state =
+        componentClient
+            .forEventSourcedEntity(slotId)
+            .method(BookingSlotEntity::getSlot)
+            .invoke();
+    assertEquals(3, state.available().size());
+    assertTrue(state.bookings().isEmpty());
+  }
+
+  @Test
+  public void participantMultipleReservations() {
+    String slot1 = "2099-04-01-09";
+    String slot2 = "2099-04-02-09";
+
+    // Mark henry available in both slots with different aircraft/instructors
+    for (String slotId : new String[] {slot1, slot2}) {
+      componentClient
+          .forEventSourcedEntity(slotId)
+          .method(BookingSlotEntity::markSlotAvailable)
+          .invoke(
+              new Command.MarkSlotAvailable(
+                  new Participant("henry", ParticipantType.STUDENT)));
+      componentClient
+          .forEventSourcedEntity(slotId)
+          .method(BookingSlotEntity::markSlotAvailable)
+          .invoke(
+              new Command.MarkSlotAvailable(
+                  new Participant("plane-" + slotId, ParticipantType.AIRCRAFT)));
+      componentClient
+          .forEventSourcedEntity(slotId)
+          .method(BookingSlotEntity::markSlotAvailable)
+          .invoke(
+              new Command.MarkSlotAvailable(
+                  new Participant("teach-" + slotId, ParticipantType.INSTRUCTOR)));
+    }
+
+    // Book henry in both slots
+    agentModel.fixedResponse(
+        JsonSupport.encodeToString(new ConditionsReport(slot1, true)));
+    componentClient
+        .forEventSourcedEntity(slot1)
+        .method(BookingSlotEntity::bookSlot)
+        .invoke(
+            new Command.BookReservation(
+                "henry", "plane-" + slot1, "teach-" + slot1, "bk-slot1"));
+
+    agentModel.fixedResponse(
+        JsonSupport.encodeToString(new ConditionsReport(slot2, true)));
+    componentClient
+        .forEventSourcedEntity(slot2)
+        .method(BookingSlotEntity::bookSlot)
+        .invoke(
+            new Command.BookReservation(
+                "henry", "plane-" + slot2, "teach-" + slot2, "bk-slot2"));
+
+    // Verify view shows 2 booked entries for henry
+    Awaitility.await()
+        .ignoreExceptions()
+        .atMost(15, SECONDS)
+        .untilAsserted(
+            () -> {
+              var slots =
+                  componentClient
+                      .forView()
+                      .method(ParticipantSlotsView::getSlotsByParticipantAndStatus)
+                      .invoke(new ParticipantStatusInput("henry", "BOOKED"));
+              assertEquals(2, slots.slots().size());
+            });
+  }
+
+  @Test
+  public void viewAfterCancellation() {
+    String slotId = "2099-05-10-14";
+
+    // Mark and book
+    componentClient
+        .forEventSourcedEntity(slotId)
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(
+            new Command.MarkSlotAvailable(new Participant("iris", ParticipantType.STUDENT)));
+    componentClient
+        .forEventSourcedEntity(slotId)
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(
+            new Command.MarkSlotAvailable(
+                new Participant("plane5", ParticipantType.AIRCRAFT)));
+    componentClient
+        .forEventSourcedEntity(slotId)
+        .method(BookingSlotEntity::markSlotAvailable)
+        .invoke(
+            new Command.MarkSlotAvailable(
+                new Participant("teach5", ParticipantType.INSTRUCTOR)));
+
+    agentModel.fixedResponse(
+        JsonSupport.encodeToString(new ConditionsReport(slotId, true)));
+
+    componentClient
+        .forEventSourcedEntity(slotId)
+        .method(BookingSlotEntity::bookSlot)
+        .invoke(new Command.BookReservation("iris", "plane5", "teach5", "bk-cancel"));
+
+    // Wait for view to show booked
+    Awaitility.await()
+        .ignoreExceptions()
+        .atMost(15, SECONDS)
+        .untilAsserted(
+            () -> {
+              var slots =
+                  componentClient
+                      .forView()
+                      .method(ParticipantSlotsView::getSlotsByParticipantAndStatus)
+                      .invoke(new ParticipantStatusInput("iris", "BOOKED"));
+              assertFalse(slots.slots().isEmpty());
+            });
+
+    // Cancel
+    componentClient
+        .forEventSourcedEntity(slotId)
+        .method(BookingSlotEntity::cancelBooking)
+        .invoke("bk-cancel");
+
+    // Verify view no longer shows booked for iris
+    Awaitility.await()
+        .ignoreExceptions()
+        .atMost(15, SECONDS)
+        .untilAsserted(
+            () -> {
+              var slots =
+                  componentClient
+                      .forView()
+                      .method(ParticipantSlotsView::getSlotsByParticipantAndStatus)
+                      .invoke(new ParticipantStatusInput("iris", "BOOKED"));
+              assertTrue(slots.slots().isEmpty());
+            });
   }
 }
