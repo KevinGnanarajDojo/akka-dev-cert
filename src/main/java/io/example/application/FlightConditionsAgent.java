@@ -1,6 +1,7 @@
 package io.example.application;
 
 import akka.javasdk.agent.Agent;
+import akka.javasdk.agent.ModelProvider;
 import akka.javasdk.annotations.Component;
 import akka.javasdk.annotations.FunctionTool;
 
@@ -49,10 +50,16 @@ public class FlightConditionsAgent extends Agent {
             """.stripIndent();
 
     public Effect<ConditionsReport> query(String timeSlotId) {
-        return effects().systemMessage(SYSTEM_MESSAGE)
-                .userMessage("Evaluate flight conditions for time slot: " + timeSlotId)
-                .responseAs(ConditionsReport.class)
-                .thenReply();
+        return effects()
+        .model(ModelProvider.googleAiGemini()
+                .withApiKey(System.getenv("GEMINI_API_KEY"))
+                .withModelName("gemini-2.5-flash")
+                .withTemperature(0.1)
+        )
+        .systemMessage(SYSTEM_MESSAGE)
+        .userMessage("Evaluate flight conditions for time slot: " + timeSlotId)
+        .responseAs(ConditionsReport.class)
+        .thenReply();
     }
 
     /*
