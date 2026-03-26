@@ -1,3 +1,11 @@
+# Setup Information
+
+* Follow the below steps below in Getting Started
+* run ```export GEMINI_API_KEY=<your-api-key-here>``` in your terminal
+* compile and run using ```mvn compile exec:java```
+
+
+
 # How to Get Certified
 
 The Flight Training Scheduler project serves as the certification test for Akka developers. This certification process evaluates your ability to implement a real-world application using Akka SDK components given a set of requirements, scaffolding, and some starter classes.
