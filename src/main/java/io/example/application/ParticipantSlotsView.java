@@ -3,6 +3,7 @@ package io.example.application;
 import akka.javasdk.annotations.Component;
 import akka.javasdk.annotations.Consume;
 import akka.javasdk.annotations.Query;
+import akka.javasdk.annotations.Table;
 import akka.javasdk.view.TableUpdater;
 import akka.javasdk.view.View;
 import io.example.application.ParticipantSlotEntity.Event.Booked;
@@ -16,8 +17,9 @@ import org.slf4j.LoggerFactory;
 @Component(id = "view-participant-slots")
 public class ParticipantSlotsView extends View {
 
-    private static Logger logger = LoggerFactory.getLogger(ParticipantSlotsView.class);
+    private static final Logger logger = LoggerFactory.getLogger(ParticipantSlotsView.class);
 
+    @Table("participant_slot_view_updater")
     @Consume.FromEventSourcedEntity(ParticipantSlotEntity.class)
     public static class ParticipantSlotsViewUpdater extends TableUpdater<SlotRow> {
 
@@ -52,7 +54,7 @@ public class ParticipantSlotsView extends View {
         return queryResult();
     }
 
-    @Query("SELECT * AS slots FROM participant_slot_view_updater WHERE participantID = :participantId AND status = :status")
+    @Query("SELECT * AS slots FROM participant_slot_view_updater WHERE participantId = :participantId AND status = :status")
     public QueryEffect<SlotList> getSlotsByParticipantAndStatus(ParticipantStatusInput input) {
         return queryResult();
     }
