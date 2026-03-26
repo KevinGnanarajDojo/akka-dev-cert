@@ -83,7 +83,7 @@ public class FlightEndpointIntegrationTest extends TestKitSupport {
                   componentClient
                       .forView()
                       .method(ParticipantSlotsView::getSlotsByParticipantAndStatus)
-                      .invoke(new ParticipantStatusInput("alice", "booked"));
+                      .invoke(new ParticipantStatusInput("alice", "BOOKED"));
               assertFalse(slots.slots().isEmpty());
               assertEquals(slotId, slots.slots().getFirst().slotId());
               assertEquals("bk1", slots.slots().getFirst().bookingId());
@@ -133,7 +133,7 @@ public class FlightEndpointIntegrationTest extends TestKitSupport {
                   componentClient
                       .forView()
                       .method(ParticipantSlotsView::getSlotsByParticipantAndStatus)
-                      .invoke(new ParticipantStatusInput("bob", "available"));
+                      .invoke(new ParticipantStatusInput("bob", "AVAILABLE"));
               assertFalse(slots.slots().isEmpty());
               assertEquals(slotId, slots.slots().getFirst().slotId());
             });
@@ -170,7 +170,7 @@ public class FlightEndpointIntegrationTest extends TestKitSupport {
         .invoke(
             new Command.MarkSlotAvailable(new Participant("jet1", ParticipantType.AIRCRAFT)));
 
-    // Attempt to book without instructor — should fail
+    // Attempt to book without an instructor — should fail
     assertThrows(
         Exception.class,
         () ->
@@ -275,7 +275,7 @@ public class FlightEndpointIntegrationTest extends TestKitSupport {
                   componentClient
                       .forView()
                       .method(ParticipantSlotsView::getSlotsByParticipantAndStatus)
-                      .invoke(new ParticipantStatusInput("frank", "available"));
+                      .invoke(new ParticipantStatusInput("frank", "AVAILABLE"));
               assertEquals(2, slots.slots().size());
             });
   }
