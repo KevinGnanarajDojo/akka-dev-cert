@@ -24,7 +24,7 @@ public class SlotToParticipantConsumer extends Consumer {
 
     public Effect onEvent(BookingEvent event) {
 
-        logger.info("[SPC] Revieved BookingEvent: {}", event);
+        logger.info("[SPC] Received BookingEvent: {}", event);
         String key = participantSlotId(event);
 
         switch (event){
